@@ -4919,7 +4919,8 @@ def shiftgrid(lon0,datain,lonsin,start=True,cyclic=360.0):
     lon0             starting longitude for shifted grid
                      (ending longitude if start=False). lon0 must be on
                      input grid (within the range of lonsin).
-    datain           original data.
+    datain           original data with longitude the right-most
+                     dimension.
     lonsin           original longitudes.
     ==============   ====================================================
 
@@ -4958,35 +4959,29 @@ def shiftgrid(lon0,datain,lonsin,start=True,cyclic=360.0):
         lonsout[0:i0_shift] = lonsin[i0:]
     else:
         lonsout[0:i0_shift] = lonsin[i0:]-cyclic
-    if datain.ndim == 2:
-        dataout[:,0:i0_shift] = datain[:,i0:]
-    elif datain.ndim == 1:
-        dataout[0:i0_shift] = datain[i0:]
-    else:
-        raise ValueError('data must be 1d or 2d with longitude as 2nd dim')
+    dataout[...,0:i0_shift] = datain[...,i0:]
     if start:
         lonsout[i0_shift:] = lonsin[start_idx:i0+start_idx]+cyclic
     else:
         lonsout[i0_shift:] = lonsin[start_idx:i0+start_idx]
-    if datain.ndim == 2:
-       dataout[:,i0_shift:] = datain[:,start_idx:i0+start_idx]
-    elif datain.ndim == 1:
-       dataout[i0_shift:] = datain[start_idx:i0+start_idx]
+    dataout[...,i0_shift:] = datain[...,start_idx:i0+start_idx]
     return dataout,lonsout
 
 def addcyclic(arrin,lonsin):
     """
     ``arrout, lonsout = addcyclic(arrin, lonsin)``
-    adds cyclic (wraparound) point in longitude to ``arrin`` and ``lonsin``.
+    adds cyclic (wraparound) point in longitude to ``arrin`` and ``lonsin``,
+    assumes longitude is the right-most dimension of ``arrin``.
     """
-    nlats = arrin.shape[0]
-    nlons = arrin.shape[1]
+    nlons = arrin.shape[-1]
+    newshape = list(arrin.shape)
+    newshape[-1] += 1
     if ma.isMA(arrin):
-        arrout  = ma.zeros((nlats,nlons+1),arrin.dtype)
+        arrout  = ma.zeros(newshape,arrin.dtype)
     else:
-        arrout  = np.zeros((nlats,nlons+1),arrin.dtype)
-    arrout[:,0:nlons] = arrin[:,:]
-    arrout[:,nlons] = arrin[:,0]
+        arrout  = np.zeros(newshape,arrin.dtype)
+    arrout[...,0:nlons] = arrin[:]
+    arrout[...,nlons] = arrin[...,0]
     if ma.isMA(lonsin):
         lonsout = ma.zeros(nlons+1,lonsin.dtype)
     else:
