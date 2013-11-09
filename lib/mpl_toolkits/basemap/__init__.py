@@ -23,7 +23,7 @@ if _matplotlib_version < _mpl_required_version:
     (_mpl_required_version,_matplotlib_version))
     raise ImportError(msg)
 from matplotlib import rcParams, is_interactive
-from matplotlib.collections import LineCollection
+from matplotlib.collections import LineCollection, PolyCollection
 from matplotlib.patches import Ellipse, Circle, Polygon, FancyArrowPatch
 from matplotlib.lines import Line2D
 from matplotlib.transforms import Bbox
@@ -47,7 +47,7 @@ if 'BASEMAPDATA' in os.environ:
 else:
     basemap_datadir = os.sep.join([os.path.dirname(__file__), 'data'])
 
-__version__ = '1.0.7'
+__version__ = '1.0.8'
 
 # module variable that sets the default value for the 'latlon' kwarg.
 # can be set to True by user so plotting functions can take lons,lats
@@ -1956,7 +1956,7 @@ class Basemap(object):
         return states
 
     def drawcounties(self,linewidth=0.1,linestyle='solid',color='k',antialiased=1,
-                     ax=None,zorder=None,drawbounds=False):
+                     facecolor='none',ax=None,zorder=None,drawbounds=False):
         """
         Draw county boundaries in US. The county boundary shapefile
         originates with the NOAA Coastal Geospatial Data Project
@@ -1970,6 +1970,7 @@ class Basemap(object):
         linewidth        county boundary line width (default 0.1)
         linestyle        coastline linestyle (default solid)
         color            county boundary line color (default black)
+        facecolor        fill color of county (default is no fill)
         antialiased      antialiasing switch for county boundaries
                          (default True).
         ax               axes instance (overrides default axes instance)
@@ -1985,10 +1986,11 @@ class Basemap(object):
         county_info = self.readshapefile(gis_file,'counties',\
                       default_encoding='latin-1',drawbounds=drawbounds)
         counties = [coords for coords in self.counties]
-        counties = LineCollection(counties)
+        counties = PolyCollection(counties)
         counties.set_linestyle(linestyle)
         counties.set_linewidth(linewidth)
-        counties.set_color(color)
+        counties.set_edgecolor(color)
+        counties.set_facecolor(facecolor)
         counties.set_label('counties')
         if zorder:
             counties.set_zorder(zorder)
@@ -3342,6 +3344,10 @@ class Basemap(object):
 
         Other \**kwargs passed on to matplotlib.pyplot.pcolor (or tricolor if
         ``tri=True``).
+        
+        Note: (taken from matplotlib.pyplot.pcolor documentation)
+        Ideally the dimensions of x and y should be one greater than those of data; 
+        if the dimensions are the same, then the last row and column of data will be ignored.
         """
         ax, plt = self._ax_plt_from_kw(kwargs)
         # allow callers to override the hold state by passing hold=True|False
@@ -3402,7 +3408,7 @@ class Basemap(object):
         """
         Make a pseudo-color plot over the map
         (see matplotlib.pyplot.pcolormesh documentation).
-
+               
         If ``latlon`` keyword is set to True, x,y are intrepreted as
         longitude and latitude in degrees.  Data and longitudes are
         automatically shifted to match map projection region for cylindrical
@@ -3413,6 +3419,10 @@ class Basemap(object):
         Extra keyword ``ax`` can be used to override the default axis instance.
 
         Other \**kwargs passed on to matplotlib.pyplot.pcolormesh.
+        
+        Note: (taken from matplotlib.pyplot.pcolor documentation)
+        Ideally the dimensions of x and y should be one greater than those of data; 
+        if the dimensions are the same, then the last row and column of data will be ignored.
         """
         ax, plt = self._ax_plt_from_kw(kwargs)
         # allow callers to override the hold state by passing hold=True|False
