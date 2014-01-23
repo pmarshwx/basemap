@@ -23,7 +23,7 @@ if _matplotlib_version < _mpl_required_version:
     (_mpl_required_version,_matplotlib_version))
     raise ImportError(msg)
 from matplotlib import rcParams, is_interactive
-from matplotlib.collections import LineCollection
+from matplotlib.collections import LineCollection, PolyCollection
 from matplotlib.patches import Ellipse, Circle, Polygon, FancyArrowPatch
 from matplotlib.lines import Line2D
 from matplotlib.transforms import Bbox
@@ -47,7 +47,7 @@ if 'BASEMAPDATA' in os.environ:
 else:
     basemap_datadir = os.sep.join([os.path.dirname(__file__), 'data'])
 
-__version__ = '1.0.7'
+__version__ = '1.0.8'
 
 # module variable that sets the default value for the 'latlon' kwarg.
 # can be set to True by user so plotting functions can take lons,lats
@@ -703,13 +703,19 @@ class Basemap(object):
             if lat_2 is None:
                 projparams['lat_2'] = lat_1
             if not using_corners:
-                if width is None or height is None:
-                    raise ValueError('must either specify lat/lon values of corners (llcrnrlon,llcrnrlat,ucrnrlon,urcrnrlat) in degrees or width and height in meters')
-                if lon_0 is None or lat_0 is None:
-                    raise ValueError('must specify lon_0 and lat_0 when using width, height to specify projection region')
-                llcrnrlon,llcrnrlat,urcrnrlon,urcrnrlat = _choosecorners(width,height,**projparams)
-                self.llcrnrlon = llcrnrlon; self.llcrnrlat = llcrnrlat
-                self.urcrnrlon = urcrnrlon; self.urcrnrlat = urcrnrlat
+                using_cornersxy = (None not in [llcrnrx,llcrnry,urcrnrx,urcrnry])
+                if using_cornersxy:
+                    llcrnrlon,llcrnrlat,urcrnrlon,urcrnrlat = _choosecornersllur(llcrnrx,llcrnry,urcrnrx,urcrnry,**projparams)
+                    self.llcrnrlon = llcrnrlon; self.llcrnrlat = llcrnrlat
+                    self.urcrnrlon = urcrnrlon; self.urcrnrlat = urcrnrlat
+                else:
+                    if width is None or height is None:
+                        raise ValueError('must either specify lat/lon values of corners (llcrnrlon,llcrnrlat,ucrnrlon,urcrnrlat) in degrees or width and height in meters')
+                    if lon_0 is None or lat_0 is None:
+                        raise ValueError('must specify lon_0 and lat_0 when using width, height to specify projection region')
+                    llcrnrlon,llcrnrlat,urcrnrlon,urcrnrlat = _choosecorners(width,height,**projparams)
+                    self.llcrnrlon = llcrnrlon; self.llcrnrlat = llcrnrlat
+                    self.urcrnrlon = urcrnrlon; self.urcrnrlat = urcrnrlat
         elif projection == 'stere':
             if k_0 is not None:
                 projparams['k_0']=k_0
@@ -1950,7 +1956,7 @@ class Basemap(object):
         return states
 
     def drawcounties(self,linewidth=0.1,linestyle='solid',color='k',antialiased=1,
-                     ax=None,zorder=None,drawbounds=False):
+                     facecolor='none',ax=None,zorder=None,drawbounds=False):
         """
         Draw county boundaries in US. The county boundary shapefile
         originates with the NOAA Coastal Geospatial Data Project
@@ -1964,6 +1970,7 @@ class Basemap(object):
         linewidth        county boundary line width (default 0.1)
         linestyle        coastline linestyle (default solid)
         color            county boundary line color (default black)
+        facecolor        fill color of county (default is no fill)
         antialiased      antialiasing switch for county boundaries
                          (default True).
         ax               axes instance (overrides default axes instance)
@@ -1979,10 +1986,11 @@ class Basemap(object):
         county_info = self.readshapefile(gis_file,'counties',\
                       default_encoding='latin-1',drawbounds=drawbounds)
         counties = [coords for coords in self.counties]
-        counties = LineCollection(counties)
+        counties = PolyCollection(counties)
         counties.set_linestyle(linestyle)
         counties.set_linewidth(linewidth)
-        counties.set_color(color)
+        counties.set_edgecolor(color)
+        counties.set_facecolor(facecolor)
         counties.set_label('counties')
         if zorder:
             counties.set_zorder(zorder)
@@ -3336,6 +3344,10 @@ class Basemap(object):
 
         Other \**kwargs passed on to matplotlib.pyplot.pcolor (or tricolor if
         ``tri=True``).
+        
+        Note: (taken from matplotlib.pyplot.pcolor documentation)
+        Ideally the dimensions of x and y should be one greater than those of data; 
+        if the dimensions are the same, then the last row and column of data will be ignored.
         """
         ax, plt = self._ax_plt_from_kw(kwargs)
         # allow callers to override the hold state by passing hold=True|False
@@ -3396,7 +3408,7 @@ class Basemap(object):
         """
         Make a pseudo-color plot over the map
         (see matplotlib.pyplot.pcolormesh documentation).
-
+               
         If ``latlon`` keyword is set to True, x,y are intrepreted as
         longitude and latitude in degrees.  Data and longitudes are
         automatically shifted to match map projection region for cylindrical
@@ -3407,6 +3419,10 @@ class Basemap(object):
         Extra keyword ``ax`` can be used to override the default axis instance.
 
         Other \**kwargs passed on to matplotlib.pyplot.pcolormesh.
+        
+        Note: (taken from matplotlib.pyplot.pcolor documentation)
+        Ideally the dimensions of x and y should be one greater than those of data; 
+        if the dimensions are the same, then the last row and column of data will be ignored.
         """
         ax, plt = self._ax_plt_from_kw(kwargs)
         # allow callers to override the hold state by passing hold=True|False
@@ -4379,8 +4395,8 @@ f=image" %\
                          to the styles provided by Generic Mapping Tools).
                          Default ``simple``.
         fontsize         for map scale annotations, default 9.
-        color            for map scale annotations, default black.
-        labelstype       ``simple`` (default) or ``fancy``.  For
+        fontcolor            for map scale annotations, default black.
+        labelstyle       ``simple`` (default) or ``fancy``.  For
                          ``fancy`` the map scale factor (ratio betwee
                          the actual distance and map projection distance
                          at lon0,lat0) and the value of lon0,lat0 are also
@@ -5071,6 +5087,21 @@ def _choosecorners(width,height,**kwargs):
     p = pyproj.Proj(kwargs)
     urcrnrlon, urcrnrlat = p(0.5*width,0.5*height, inverse=True)
     llcrnrlon, llcrnrlat = p(-0.5*width,-0.5*height, inverse=True)
+    corners = llcrnrlon,llcrnrlat,urcrnrlon,urcrnrlat
+    # test for invalid projection points on output
+    if llcrnrlon > 1.e20 or urcrnrlon > 1.e20:
+        raise ValueError('width and/or height too large for this projection, try smaller values')
+    else:
+        return corners
+
+def _choosecornersllur(llcrnrx, llcrnry, urcrnrx, urcrnry,**kwargs):
+    """
+    private function to determine lat/lon values of projection region corners,
+    given width and height of projection region in meters.
+    """
+    p = pyproj.Proj(kwargs)
+    urcrnrlon, urcrnrlat = p(urcrnrx, urcrnry, inverse=True)
+    llcrnrlon, llcrnrlat = p(llcrnrx, llcrnry, inverse=True)
     corners = llcrnrlon,llcrnrlat,urcrnrlon,urcrnrlat
     # test for invalid projection points on output
     if llcrnrlon > 1.e20 or urcrnrlon > 1.e20:
