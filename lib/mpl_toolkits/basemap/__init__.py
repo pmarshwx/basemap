@@ -382,6 +382,8 @@ _Basemap_init_doc = """
                   projections.
  lon_0            central meridian (x-axis origin) - used by all
                   projections.
+ o_lat_p          latitude of rotated pole (only used by 'rotpole')
+ o_lon_p          longitude of rotated pole (only used by 'rotpole')
  boundinglat      bounding latitude for pole-centered projections
                   (npstere,spstere,nplaea,splaea,npaeqd,spaeqd).
                   These projections are square regions centered
@@ -1402,7 +1404,7 @@ class Basemap(object):
                         xd = (bx[1:]-bx[0:-1])**2
                         yd = (by[1:]-by[0:-1])**2
                         dist = np.sqrt(xd+yd)
-                        split = dist > 0.5*(self.xmax-self.xmin)
+                        split = dist > 0.1*(self.xmax-self.xmin)
                         if np.sum(split) and self.projection not in _cylproj:
                             ind = (np.compress(split,np.squeeze(split*np.indices(xd.shape)))+1).tolist()
                             iprev = 0
@@ -2889,10 +2891,6 @@ class Basemap(object):
                          method of Basemap instance.
         ==============   =======================================================
 
-        .. note::
-         Cannot handle situations in which the great circle intersects
-         the edge of the map projection domain, and then re-enters the domain.
-
         Returns a matplotlib.lines.Line2D object.
         """
         # use great circle formula for a perfect sphere.
@@ -2906,7 +2904,34 @@ class Basemap(object):
             lats.append(lat)
         lons.append(lon2); lats.append(lat2)
         x, y = self(lons, lats)
-        return self.plot(x,y,**kwargs)
+
+        # Correct wrap around effect of great circles
+
+        # get points
+        p = self.plot(x,y,**kwargs)[0].get_path()
+
+        # since we know the difference between any two points, we can use this to find wrap arounds on the plot
+        max_dist = 1000*del_s*2
+
+        # calculate distances and compare with max allowable distance
+        dists = np.abs(np.diff(p.vertices[:,0]))
+        cuts = np.where( dists > max_dist )[0]
+
+        # if there are any cut points, cut them and begin again at the next point
+        for i,k in enumerate(cuts):
+            # vertex to cut at
+            cut_point = cuts[i]
+
+            # create new vertices with a nan inbetween and set those as the path's vertices
+            verts = np.concatenate(
+                                       [p.vertices[:cut_point, :],
+                                        [[np.nan, np.nan]],
+                                        p.vertices[cut_point+1:, :]]
+                                       )
+            p.codes = None
+            p.vertices = verts
+
+        return p
 
     def transform_scalar(self,datin,lons,lats,nx,ny,returnxy=False,checkbounds=False,order=1,masked=False):
         """
@@ -3344,9 +3369,9 @@ class Basemap(object):
 
         Other \**kwargs passed on to matplotlib.pyplot.pcolor (or tricolor if
         ``tri=True``).
-        
+
         Note: (taken from matplotlib.pyplot.pcolor documentation)
-        Ideally the dimensions of x and y should be one greater than those of data; 
+        Ideally the dimensions of x and y should be one greater than those of data;
         if the dimensions are the same, then the last row and column of data will be ignored.
         """
         ax, plt = self._ax_plt_from_kw(kwargs)
@@ -3408,7 +3433,7 @@ class Basemap(object):
         """
         Make a pseudo-color plot over the map
         (see matplotlib.pyplot.pcolormesh documentation).
-               
+
         If ``latlon`` keyword is set to True, x,y are intrepreted as
         longitude and latitude in degrees.  Data and longitudes are
         automatically shifted to match map projection region for cylindrical
@@ -3419,9 +3444,9 @@ class Basemap(object):
         Extra keyword ``ax`` can be used to override the default axis instance.
 
         Other \**kwargs passed on to matplotlib.pyplot.pcolormesh.
-        
+
         Note: (taken from matplotlib.pyplot.pcolor documentation)
-        Ideally the dimensions of x and y should be one greater than those of data; 
+        Ideally the dimensions of x and y should be one greater than those of data;
         if the dimensions are the same, then the last row and column of data will be ignored.
         """
         ax, plt = self._ax_plt_from_kw(kwargs)
@@ -4056,10 +4081,16 @@ class Basemap(object):
 
         returns a matplotlib.image.AxesImage instance.
         """
+
+        # fix PIL import on some versions of OSX and scipy
         try:
             from PIL import Image
         except ImportError:
-            raise ImportError('warpimage method requires PIL (http://www.pythonware.com/products/pil)')
+            try:
+                import Image
+            except ImportError:
+                raise ImportError('warpimage method requires PIL (http://www.pythonware.com/products/pil)')
+
         from matplotlib.image import pil_to_array
         if self.celestial:
             msg='warpimage does not work in celestial coordinates'
@@ -5056,11 +5087,13 @@ def shiftgrid(lon0,datain,lonsin,start=True,cyclic=360.0):
     dataout[...,i0_shift:] = datain[...,start_idx:i0+start_idx]
     return dataout,lonsout
 
-def addcyclic(arrin,lonsin):
+def addcyclic(arrin,lonsin,cyclic_length=360):
     """
     ``arrout, lonsout = addcyclic(arrin, lonsin)``
     adds cyclic (wraparound) point in longitude to ``arrin`` and ``lonsin``,
     assumes longitude is the right-most dimension of ``arrin``.
+    If length of cyclic dimension is not 360 (degrees), set with kwarg
+    ``cyclic_length``.
     """
     nlons = arrin.shape[-1]
     newshape = list(arrin.shape)
@@ -5076,8 +5109,10 @@ def addcyclic(arrin,lonsin):
     else:
         lonsout = np.zeros(nlons+1,lonsin.dtype)
     lonsout[0:nlons] = lonsin[:]
-    lonsout[nlons]  = lonsin[-1] + lonsin[1]-lonsin[0]
-    return arrout,lonsout
+    # this assumes a regular grid (in longitude)
+    #lonsout[nlons]  = lonsin[-1] + lonsin[1]-lonsin[0]
+    # the version below is valid for irregular grids.
+    lonsout[nlons] = lonsin[-1] + cyclic_length % (lonsin[-1]-lonsin[0])
 
 def _choosecorners(width,height,**kwargs):
     """
