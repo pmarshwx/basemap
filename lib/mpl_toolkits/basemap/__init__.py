@@ -2217,10 +2217,10 @@ class Basemap(object):
         self.__dict__[name+'_info']=attributes
         return info
 
-    def drawparallels(self,circles,color='k',linewidth=1.,zorder=None, \
+    def drawparallels(self,circles,color='k',textcolor='k',linewidth=1.,zorder=None, \
                       dashes=[1,1],labels=[0,0,0,0],labelstyle=None, \
                       fmt='%g',xoffset=None,yoffset=None,ax=None,latmax=None,
-                      **kwargs):
+                      **text_kwargs):
         """
         Draw and label parallels (latitude lines) for values (in degrees)
         given in the sequence ``circles``.
@@ -2231,6 +2231,7 @@ class Basemap(object):
         Keyword          Description
         ==============   ====================================================
         color            color to draw parallels (default black).
+        textcolor        color to draw labels (default black).
         linewidth        line width for parallels (default 1.)
         zorder           sets the zorder for parallels (if not specified,
                          uses default zorder for matplotlib.lines.Line2D
@@ -2259,7 +2260,7 @@ class Basemap(object):
         ax               axes instance (overrides default axes instance)
         latmax           absolute value of latitude to which meridians are drawn
                          (default is 80).
-        \**kwargs        additional keyword arguments controlling text
+        \**text_kwargs   additional keyword arguments controlling text
                          for labels that are passed on to
                          the text method of the axes instance (see
                          matplotlib.pyplot.text documentation).
@@ -2271,6 +2272,7 @@ class Basemap(object):
         associated with each parallel. Deleting an item from the
         dictionary removes the corresponding parallel from the plot.
         """
+        text_kwargs['color']=textcolor # pass textcolor kwarg on to ax.text
         # if celestial=True, don't use "N" and "S" labels.
         if labelstyle is None and self.celestial:
             labelstyle="+/-"
@@ -2446,13 +2448,13 @@ class Basemap(object):
                             xlab = xlab-xoffset
                             if self.projection in _pseudocyl:
                                 if lat>0:
-                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='right',verticalalignment='bottom',**kwargs)
+                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='right',verticalalignment='bottom',**text_kwargs)
                                 elif lat<0:
-                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='right',verticalalignment='top',**kwargs)
+                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='right',verticalalignment='top',**text_kwargs)
                                 else:
-                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='right',verticalalignment='center',**kwargs)
+                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='right',verticalalignment='center',**text_kwargs)
                             else:
-                               t=ax.text(xlab,yy[n],latlab,horizontalalignment='right',verticalalignment='center',**kwargs)
+                               t=ax.text(xlab,yy[n],latlab,horizontalalignment='right',verticalalignment='center',**text_kwargs)
                         elif side == 'r':
                             if self.projection in _pseudocyl:
                                 if self.celestial:
@@ -2464,17 +2466,17 @@ class Basemap(object):
                             xlab = xlab+xoffset
                             if self.projection in _pseudocyl:
                                 if lat>0:
-                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='left',verticalalignment='bottom',**kwargs)
+                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='left',verticalalignment='bottom',**text_kwargs)
                                 elif lat<0:
-                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='left',verticalalignment='top',**kwargs)
+                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='left',verticalalignment='top',**text_kwargs)
                                 else:
-                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='left',verticalalignment='center',**kwargs)
+                                   t=ax.text(xlab,yy[n],latlab,horizontalalignment='left',verticalalignment='center',**text_kwargs)
                             else:
-                               t=ax.text(xlab,yy[n],latlab,horizontalalignment='left',verticalalignment='center',**kwargs)
+                               t=ax.text(xlab,yy[n],latlab,horizontalalignment='left',verticalalignment='center',**text_kwargs)
                         elif side == 'b':
-                            t = ax.text(xx[n],self.llcrnry-yoffset,latlab,horizontalalignment='center',verticalalignment='top',**kwargs)
+                            t = ax.text(xx[n],self.llcrnry-yoffset,latlab,horizontalalignment='center',verticalalignment='top',**text_kwargs)
                         else:
-                            t = ax.text(xx[n],self.urcrnry+yoffset,latlab,horizontalalignment='center',verticalalignment='bottom',**kwargs)
+                            t = ax.text(xx[n],self.urcrnry+yoffset,latlab,horizontalalignment='center',verticalalignment='bottom',**text_kwargs)
                         if t is not None: linecolls[lat][1].append(t)
 
         # set axes limits to fit map region.
@@ -2501,10 +2503,10 @@ class Basemap(object):
                     l.set_clip_path(c)
         return pardict
 
-    def drawmeridians(self,meridians,color='k',linewidth=1., zorder=None,\
+    def drawmeridians(self,meridians,color='k',textcolor='k',linewidth=1., zorder=None,\
                       dashes=[1,1],labels=[0,0,0,0],labelstyle=None,\
                       fmt='%g',xoffset=None,yoffset=None,ax=None,latmax=None,
-                      **kwargs):
+                      **text_kwargs):
         """
         Draw and label meridians (longitude lines) for values (in degrees)
         given in the sequence ``meridians``.
@@ -2515,6 +2517,7 @@ class Basemap(object):
         Keyword          Description
         ==============   ====================================================
         color            color to draw meridians (default black).
+        textcolor        color to draw labels (default black).
         linewidth        line width for meridians (default 1.)
         zorder           sets the zorder for meridians (if not specified,
                          uses default zorder for matplotlib.lines.Line2D
@@ -2543,7 +2546,7 @@ class Basemap(object):
         ax               axes instance (overrides default axes instance)
         latmax           absolute value of latitude to which meridians are drawn
                          (default is 80).
-        \**kwargs        additional keyword arguments controlling text
+        \**text_kwargs   additional keyword arguments controlling text
                          for labels that are passed on to
                          the text method of the axes instance (see
                          matplotlib.pyplot.text documentation).
@@ -2555,6 +2558,7 @@ class Basemap(object):
         associated with each meridian. Deleting an item from the
         dictionary removes the correpsonding meridian from the plot.
         """
+        text_kwargs['color']=textcolor # pass textcolor kwarg on to ax.text
         # for cylindrical projections, try to handle wraparound (i.e. if
         # projection is defined in -180 to 0 and user asks for meridians from
         # 180 to 360 to be drawn, it should work)
@@ -2718,13 +2722,13 @@ class Basemap(object):
                     if n >= 0:
                         t = None
                         if side == 'l':
-                            t = ax.text(self.llcrnrx-xoffset,yy[n],lonlab,horizontalalignment='right',verticalalignment='center',**kwargs)
+                            t = ax.text(self.llcrnrx-xoffset,yy[n],lonlab,horizontalalignment='right',verticalalignment='center',**text_kwargs)
                         elif side == 'r':
-                            t = ax.text(self.urcrnrx+xoffset,yy[n],lonlab,horizontalalignment='left',verticalalignment='center',**kwargs)
+                            t = ax.text(self.urcrnrx+xoffset,yy[n],lonlab,horizontalalignment='left',verticalalignment='center',**text_kwargs)
                         elif side == 'b':
-                            t = ax.text(xx[n],self.llcrnry-yoffset,lonlab,horizontalalignment='center',verticalalignment='top',**kwargs)
+                            t = ax.text(xx[n],self.llcrnry-yoffset,lonlab,horizontalalignment='center',verticalalignment='top',**text_kwargs)
                         else:
-                            t = ax.text(xx[n],self.urcrnry+yoffset,lonlab,horizontalalignment='center',verticalalignment='bottom',**kwargs)
+                            t = ax.text(xx[n],self.urcrnry+yoffset,lonlab,horizontalalignment='center',verticalalignment='bottom',**text_kwargs)
 
                         if t is not None: linecolls[lon][1].append(t)
         # set axes limits to fit map region.
@@ -2813,8 +2817,7 @@ class Basemap(object):
                     if labels[1] and not labels[0] and x >=  0.5*(self.xmin+self.xmax)-xoffset: continue
                     if labels[2] and not labels[3] and y >=  0.5*(self.ymin+self.ymax)-yoffset: continue
                     if labels[3] and not labels[2] and y <=  0.5*(self.ymin+self.ymax)+yoffset: continue
-                t =\
-                ax.text(x,y,lonlab,horizontalalignment=horizalign,verticalalignment=vertalign,**kwargs)
+                t=ax.text(x,y,lonlab,horizontalalignment=horizalign,verticalalignment=vertalign,**text_kwargs)
                 meridict[merid][1].append(t)
         return meridict
 
@@ -5087,32 +5090,50 @@ def shiftgrid(lon0,datain,lonsin,start=True,cyclic=360.0):
     dataout[...,i0_shift:] = datain[...,start_idx:i0+start_idx]
     return dataout,lonsout
 
-def addcyclic(arrin,lonsin,cyclic_length=360):
+def addcyclic(*arr,**kwargs):
     """
-    ``arrout, lonsout = addcyclic(arrin, lonsin)``
-    adds cyclic (wraparound) point in longitude to ``arrin`` and ``lonsin``,
-    assumes longitude is the right-most dimension of ``arrin``.
-    If length of cyclic dimension is not 360 (degrees), set with kwarg
-    ``cyclic_length``.
+    Adds cyclic (wraparound) points in longitude to one or several arrays,
+    the last array being longitudes in degrees. e.g.
+
+   ``data1out, data2out, lonsout = addcyclic(data1,data2,lons)``
+
+    ==============   ====================================================
+    Keywords         Description
+    ==============   ====================================================
+    axis             the dimension representing longitude (default -1,
+                     or right-most)
+    cyclic           width of periodic domain (default 360)
+    ==============   ====================================================
     """
-    nlons = arrin.shape[-1]
-    newshape = list(arrin.shape)
-    newshape[-1] += 1
-    if ma.isMA(arrin):
-        arrout  = ma.zeros(newshape,arrin.dtype)
+    # get (default) keyword arguments
+    axis = kwargs.get('axis',-1)
+    cyclic = kwargs.get('cyclic',360)
+    # define functions
+    def _addcyclic(a):
+        """addcyclic function for a single data array"""
+        npsel = np.ma if np.ma.is_masked(a) else np
+        slicer = [slice(None)] * np.ndim(a)
+        try:
+            slicer[axis] = slice(0, 1)
+        except IndexError:
+            raise ValueError('The specified axis does not correspond to an '
+                    'array dimension.')
+        return npsel.concatenate((a,a[slicer]),axis=axis)
+    def _addcyclic_lon(a):
+        """addcyclic function for a single longitude array"""
+        # select the right numpy functions
+        npsel = np.ma if np.ma.is_masked(a) else np
+        # get cyclic longitudes
+        clon = (np.take(a,[0],axis=axis)
+                + cyclic * np.sign(np.diff(np.take(a,[0,-1],axis=axis),axis=axis)))
+        # ensure the values do not exceed cyclic
+        clonmod = npsel.where(clon<=cyclic,clon,np.mod(clon,cyclic))
+        return npsel.concatenate((a,clonmod),axis=axis)
+    # process array(s)
+    if len(arr) == 1:
+        return _addcyclic_lon(arr[-1])
     else:
-        arrout  = np.zeros(newshape,arrin.dtype)
-    arrout[...,0:nlons] = arrin[:]
-    arrout[...,nlons] = arrin[...,0]
-    if ma.isMA(lonsin):
-        lonsout = ma.zeros(nlons+1,lonsin.dtype)
-    else:
-        lonsout = np.zeros(nlons+1,lonsin.dtype)
-    lonsout[0:nlons] = lonsin[:]
-    # this assumes a regular grid (in longitude)
-    #lonsout[nlons]  = lonsin[-1] + lonsin[1]-lonsin[0]
-    # the version below is valid for irregular grids.
-    lonsout[nlons] = lonsin[-1] + cyclic_length % (lonsin[-1]-lonsin[0])
+        return map(_addcyclic,arr[:-1]) + [_addcyclic_lon(arr[-1])]
 
 def _choosecorners(width,height,**kwargs):
     """
